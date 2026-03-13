@@ -35,7 +35,6 @@ dev = [
 
 [tool.uv]
 package = true
-index-url = "https://nexus.tcsbank.ru/repository/pypi-all/simple"
 
 [tool.pytest.ini_options]
 addopts = "--strict-markers --showlocals --verbosity 2"
