@@ -18,7 +18,7 @@ own instance, or use predefined global one - `deps`.
 To register a dependency invoke method `Dependencies.register`:
 
 ```python
-from yggdrasyl import deps
+from yggdrasyl import deps, from_instance, from_factory
 
 
 deps.register(UserServiceConfig, lambda d: UserServiceConfig())
