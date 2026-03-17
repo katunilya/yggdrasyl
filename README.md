@@ -40,7 +40,7 @@ Also there are multiple optional keyword-only arguments:
 3. `override` - if `True` than existing dependency with same type is overridden, `False`
    by default
 
-For simplification of registering objects from instances one case use `from_instance`
+For simplification of registering objects from instances one can use `from_instance`
 utility function. If one has factory function (for example class constructor) use
 `from_factory`.
 
@@ -72,7 +72,8 @@ If type is not registered, then `TypeNotRegisteredError` is raised.
 Some dependencies require being initialized on application startup. In order not to
 forget one and rule management from single place there is a `managed` parameter, that
 indicates that this dependency should be resolved on startup and is sync or async
-context manager, that should be initialized.
+context manager, that should be initialized. By default it takes `False` meaning, that
+one must explicitly tell, that dependency is managed.
 
 After marking only dependencies as `managed` just open `Dependencies.initialize` context
 and all the dependencies will be initialized at once. Basically this method should be

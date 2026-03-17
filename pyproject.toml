@@ -8,14 +8,6 @@ version = "0.1.0"
 description = "Simple dependency injection tool"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = [
-    "mypy>=1.19.1",
-    "pytest>=9.0.2",
-    "pytest-asyncio>=1.3.0",
-    "pytest-cov>=7.0.0",
-    "ruff>=0.15.4",
-    "ty>=0.0.20",
-]
 authors = [{ name = "Ilya Katun", email = "katun.ilya@gmail.com" }]
 maintainers = [{ name = "Ilya Katun", email = "katun.ilya@gmail.com" }]
 
