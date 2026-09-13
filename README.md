@@ -1,83 +1,87 @@
-# yggsdrasyl
+# yggdrasyl
 
-Simplistic, but totally explicit dependency injection tool. Main goal is to provide
-simple, but powerful API for registering dependencies by type and their extensible
-resolution mechanism in functions.
+Yggdrasyl is a small, explicit dependency-injection library for Python. It registers
+dependencies by type and resolves or injects them into application code.
 
-> Why `yggdrasyl`? This is misspelling of `yggdrasil` - the ancient tree of life in
-> Nordic / Scandinavian mythologies, that connects all the worlds, like DI Framework
-> connects dependencies.
+> Why `yggdrasyl`? The name intentionally misspells Yggdrasil, the tree that connects
+> the worlds in Norse mythology—much like a dependency-injection container connects
+> application components.
 
-## Usage
+## Installation
 
-Main entry point to dependency management is class `Dependencies`. You can create your
-own instance, or use predefined global one - `deps`.
+Yggdrasyl requires Python 3.13 or newer.
 
-### Dependency Registration
-
-To register a dependency invoke method `Dependencies.register`:
-
-```python
-from yggdrasyl import deps
-
-
-deps.register(UserServiceConfig, lambda d: UserServiceConfig())
-deps.register(UserService, lambda d: UserService(config=d.resolve(UserServiceConfig)))
+```bash
+uv add yggdrasyl
+# or
+pip install yggdrasyl
 ```
 
-`Dependencies.register` accepts accepts 2 required arguments:
+## Quick start
 
-1. dependency type - identifier for dependency resolution
-2. factory function - function that accepts `Dependencies` object and returns dependency
-   instance
-
-Also there are multiple optional keyword-only arguments:
-
-1. `cached` - if `True` than dependency object is reused across all resolutions, `True`
-   by default
-2. `managed` - if `True` than dependency object is managed by context manager and can be
-   initialized with all the other dependencies
-3. `override` - if `True` than existing dependency with same type is overridden, `False`
-   by default
-
-For simplification of registering objects from instances one can use `from_instance`
-utility function. If one has factory function (for example class constructor) use
-`from_factory`.
+Create an isolated `Dependencies` container, register factories, and resolve objects by
+type. The package also exports `deps`, a module-level container for applications that
+prefer a shared registry.
 
 ```python
-from yggdrasyl import deps, from_instance, from_factory
+from dataclasses import dataclass
+
+from yggdrasyl import Dependencies, from_factory
 
 
+@dataclass
+class Config:
+    api_url: str = "https://example.com"
+
+
+class Client:
+    def __init__(self, config: Config) -> None:
+        self.config = config
+
+
+deps = Dependencies()
+deps.register(Config, from_factory(Config))
+deps.register(Client, lambda registry: Client(registry.resolve(Config)))
+
+client = deps.resolve(Client)
+assert client.config.api_url == "https://example.com"
+```
+
+## Registration and resolution
+
+`Dependencies.register(type_, resolver, *, cached=True, managed=False,
+override=False)` accepts a type and a resolver function. The resolver receives the
+current `Dependencies` container and returns an instance of the registered type.
+
+- `cached=True` reuses the first instance created for that registration. Set it to
+  `False` to call the resolver on every resolution.
+- `managed=True` makes `initialize()` enter the resolved sync or async context manager.
+- `override=True` replaces an existing registration. Otherwise, registering the same
+  type raises `TypeAlreadyRegisteredError`.
+
+Use `from_instance(value)` for an existing object and `from_factory(factory)` for a
+zero-argument callable:
+
+```python
+from yggdrasyl import Dependencies, from_factory, from_instance
+
+deps = Dependencies()
 deps.register(int, from_instance(1))
-deps.register(IService, from_factory(Service))
+deps.register(list, from_factory(list))
 ```
 
-If dependency type is already registered, then `TypeAlreadyRegisteredError` is raised.
+`Dependencies.resolve(type_)` returns the registered value. It raises
+`TypeNotRegisteredError` when the type is missing and wraps resolver failures in
+`TypeResolutionError`.
 
-### Dependency Resolution
+## Managed dependencies
 
-To resolve dependency invoke `Dependencies.resolve` method with single desired type
-argument:
+Entering the asynchronous `initialize()` context resolves every `managed=True`
+registration and enters sync and async context managers. Resources are closed when the
+context exits. A managed value that implements neither protocol raises
+`NotContextManagerError`.
 
-```python
-from yggdrasyl import deps
-
-user_service = deps.resolve(UserService)
-```
-
-If type is not registered, then `TypeNotRegisteredError` is raised.
-
-### Context Manager Dependencies
-
-Some dependencies require being initialized on application startup. In order not to
-forget one and rule management from single place there is a `managed` parameter, that
-indicates that this dependency should be resolved on startup and is sync or async
-context manager, that should be initialized. By default it takes `False` meaning, that
-one must explicitly tell, that dependency is managed.
-
-After marking only dependencies as `managed` just open `Dependencies.initialize` context
-and all the dependencies will be initialized at once. Basically this method should be
-used as lifespan for ASGI applications (for example).
+For example, use `initialize()` as an ASGI lifespan:
 
 ```python
 from contextlib import asynccontextmanager
@@ -87,26 +91,52 @@ from yggdrasyl import deps
 
 
 @asynccontextmanager
-async def _lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     async with deps.initialize():
         yield
+
+
+app = FastAPI(lifespan=lifespan)
 ```
 
-### Dependency Wiring
+## Scoped overrides
 
-In order not to call `Dependencies.resolve` manually for each dependency, there is a way to tell that some callable requires some dependencies via `Dependencies.wire` decorator:
+`Dependencies.scope()` creates a context-local registry layer. Registrations and
+overrides made inside the scope are discarded when it exits.
 
 ```python
-from yggdrasyl import deps, Injected
+from yggdrasyl import Dependencies, from_instance
+
+deps = Dependencies()
+deps.register(int, from_instance(1))
+
+with deps.scope():
+    deps.register(int, from_instance(2), override=True)
+    assert deps.resolve(int) == 2
+
+assert deps.resolve(int) == 1
+```
+
+## Dependency wiring
+
+Decorate a callable with `Dependencies.wire` and mark injectable parameters with
+`Injected[Type]`. The container resolves marked parameters when they are omitted.
+
+```python
+from yggdrasyl import Dependencies, Injected, from_instance
+
+deps = Dependencies()
+deps.register(int, from_instance(2))
 
 
 @deps.wire
-async def _handle_register_user(
-    action: RegisterUser,
-    user_service: UserService = Injected[UserService]
-) -> UserID:
-    ...
+def repeat(value: str, count: int = Injected[int]) -> str:
+    return value * count
+
+
+assert repeat("a") == "aa"
+assert repeat("a", count=3) == "aaa"
 ```
 
-To mark argument to be injected from DI container one should use `Injected` object with
-wanted type in `[]`.
+Override injected parameters by keyword. Positional overrides for injectable parameters
+are not supported.
