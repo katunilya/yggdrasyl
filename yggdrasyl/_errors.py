@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Any, Type
 
 
 class TypeAlreadyRegisteredError(Exception):
@@ -9,10 +9,12 @@ class TypeAlreadyRegisteredError(Exception):
 
 
 class TypeNotRegisteredError(Exception):
-    def __init__(self, type_: Type) -> None:
+    def __init__(self, type_: Type[Any], *types: Type[Any]) -> None:
         self.type = type_
+        self.types = (type_, *types)
 
-        super().__init__(f"{type_.__name__} not registered")
+        type_names = ", ".join(type_.__name__ for type_ in self.types)
+        super().__init__(f"{type_names} not registered")
 
 
 class TypeResolutionError(Exception):
