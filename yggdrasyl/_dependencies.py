@@ -116,6 +116,14 @@ class Dependencies:
         except Exception as exc:
             raise TypeResolutionError(type_) from exc
 
+    def requires(self, /, *types: Type[Any]) -> Self:
+        missing_types = tuple(type_ for type_ in types if type_ not in self._registry)
+
+        if missing_types:
+            raise TypeNotRegisteredError(*missing_types)
+
+        return self
+
     def wire[**P, R](self, fn: Callable[P, R]) -> Callable[P, R]:
         signature = inspect.signature(fn)
 

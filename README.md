@@ -1,11 +1,12 @@
 # yggdrasyl
 
-Yggdrasyl is a small, explicit dependency-injection library for Python. It registers
-dependencies by type and resolves or injects them into application code.
+Yggdrasyl is a small, explicit dependency-injection library for Python. It
+registers dependencies by type and resolves or injects them into application
+code.
 
-> Why `yggdrasyl`? The name intentionally misspells Yggdrasil, the tree that connects
-> the worlds in Norse mythology—much like a dependency-injection container connects
-> application components.
+> Why `yggdrasyl`? The name intentionally misspells Yggdrasil, the tree that
+> connects the worlds in Norse mythology—much like a dependency-injection
+> container connects application components.
 
 ## Installation
 
@@ -19,9 +20,9 @@ pip install yggdrasyl
 
 ## Quick start
 
-Create an isolated `Dependencies` container, register factories, and resolve objects by
-type. The package also exports `deps`, a module-level container for applications that
-prefer a shared registry.
+Create an isolated `Dependencies` container, register factories, and resolve
+objects by type. The package also exports `deps`, a module-level container for
+applications that prefer a shared registry.
 
 ```python
 from dataclasses import dataclass
@@ -50,17 +51,19 @@ assert client.config.api_url == "https://example.com"
 ## Registration and resolution
 
 `Dependencies.register(type_, resolver, *, cached=True, managed=False,
-override=False)` accepts a type and a resolver function. The resolver receives the
-current `Dependencies` container and returns an instance of the registered type.
+override=False)` accepts a type and a resolver function. The resolver receives
+the current `Dependencies` container and returns an instance of the registered
+type.
 
-- `cached=True` reuses the first instance created for that registration. Set it to
-  `False` to call the resolver on every resolution.
-- `managed=True` makes `initialize()` enter the resolved sync or async context manager.
-- `override=True` replaces an existing registration. Otherwise, registering the same
-  type raises `TypeAlreadyRegisteredError`.
+- `cached=True` reuses the first instance created for that registration. Set it
+  to `False` to call the resolver on every resolution.
+- `managed=True` makes `initialize()` enter the resolved sync or async context
+  manager.
+- `override=True` replaces an existing registration. Otherwise, registering the
+  same type raises `TypeAlreadyRegisteredError`.
 
-Use `from_instance(value)` for an existing object and `from_factory(factory)` for a
-zero-argument callable:
+Use `from_instance(value)` for an existing object and `from_factory(factory)`
+for a zero-argument callable:
 
 ```python
 from yggdrasyl import Dependencies, from_factory, from_instance
@@ -74,11 +77,18 @@ deps.register(list, from_factory(list))
 `TypeNotRegisteredError` when the type is missing and wraps resolver failures in
 `TypeResolutionError`.
 
+Use `Dependencies.requires(*types)` to verify registrations before application
+startup. It raises one `TypeNotRegisteredError` containing every missing type:
+
+```python
+deps.requires(Config, Client)
+```
+
 ## Managed dependencies
 
 Entering the asynchronous `initialize()` context resolves every `managed=True`
-registration and enters sync and async context managers. Resources are closed when the
-context exits. A managed value that implements neither protocol raises
+registration and enters sync and async context managers. Resources are closed
+when the context exits. A managed value that implements neither protocol raises
 `NotContextManagerError`.
 
 For example, use `initialize()` as an ASGI lifespan:
@@ -120,7 +130,8 @@ assert deps.resolve(int) == 1
 ## Dependency wiring
 
 Decorate a callable with `Dependencies.wire` and mark injectable parameters with
-`Injected[Type]`. The container resolves marked parameters when they are omitted.
+`Injected[Type]`. The container resolves marked parameters when they are
+omitted.
 
 ```python
 from yggdrasyl import Dependencies, Injected, from_instance
@@ -138,5 +149,5 @@ assert repeat("a") == "aa"
 assert repeat("a", count=3) == "aaa"
 ```
 
-Override injected parameters by keyword. Positional overrides for injectable parameters
-are not supported.
+Override injected parameters by keyword. Positional overrides for injectable
+parameters are not supported.

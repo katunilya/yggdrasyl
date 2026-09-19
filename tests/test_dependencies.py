@@ -95,6 +95,23 @@ def test_raises_type_not_registered_error(deps: Dependencies) -> None:
         deps.resolve(int)
 
 
+def test_requires_registered_types(deps: Dependencies) -> None:
+    deps.register(int, from_instance(1))
+    deps.register(str, from_instance("foo"))
+
+    assert deps.requires(int, str) is deps
+
+
+def test_requires_reports_all_missing_types(deps: Dependencies) -> None:
+    deps.register(int, from_instance(1))
+
+    with pytest.raises(TypeNotRegisteredError) as exc_info:
+        deps.requires(str, int, float)
+
+    assert exc_info.value.types == (str, float)
+    assert str(exc_info.value) == "str, float not registered"
+
+
 def test_raises_type_resolution_error(deps: Dependencies) -> None:
     deps.register(float, lambda _: 1 / 0)
 
