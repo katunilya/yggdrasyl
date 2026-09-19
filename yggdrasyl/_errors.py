@@ -9,9 +9,8 @@ class TypeAlreadyRegisteredError(Exception):
 
 
 class TypeNotRegisteredError(Exception):
-    def __init__(self, type_: Type[Any], *types: Type[Any]) -> None:
-        self.type = type_
-        self.types = (type_, *types)
+    def __init__(self, *types: Type[Any]) -> None:
+        self.types = types
 
         type_names = ", ".join(type_.__name__ for type_ in self.types)
         super().__init__(f"{type_names} not registered")
