@@ -20,6 +20,7 @@ from typing import (
 
 from ._errors import (
     NotContextManagerError,
+    RegistryValidationError,
     TypeAlreadyRegisteredError,
     TypeNotRegisteredError,
     TypeResolutionError,
@@ -75,6 +76,11 @@ class Dependencies:
             repr=False,
         )
     )  # ty: ignore[invalid-assignment]
+    _required_types: set[type[Any]] = field(
+        init=False,
+        default_factory=set,
+        repr=False,
+    )
 
     @property
     def _registry(self) -> MutableMapping[Type[Any], _Resolver[Any]]:
@@ -115,6 +121,22 @@ class Dependencies:
             return self._registry[type_](self)
         except Exception as exc:
             raise TypeResolutionError(type_) from exc
+
+    def verify(self) -> None:
+        _registered_types = set(self._registry.keys())
+
+        if not self._required_types.issubset(_registered_types):
+            _missing_types = sorted(
+                self._required_types - _registered_types,
+                key=lambda type_: type_.__name__,
+            )
+
+            raise RegistryValidationError(*_missing_types)
+
+    def requires(self, type_: type[Any]) -> Self:
+        self._required_types.add(type_)
+
+        return self
 
     def wire[**P, R](self, fn: Callable[P, R]) -> Callable[P, R]:
         signature = inspect.signature(fn)

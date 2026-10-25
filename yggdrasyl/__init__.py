@@ -1,6 +1,7 @@
 from ._dependencies import Dependencies, Injected, deps
 from ._errors import (
     NotContextManagerError,
+    RegistryValidationError,
     TypeAlreadyRegisteredError,
     TypeNotRegisteredError,
     TypeResolutionError,
@@ -11,6 +12,7 @@ __all__ = [
     "Dependencies",
     "Injected",
     "NotContextManagerError",
+    "RegistryValidationError",
     "TypeAlreadyRegisteredError",
     "TypeNotRegisteredError",
     "TypeResolutionError",
