@@ -28,3 +28,11 @@ class NotContextManagerError(Exception):
         self.dependency = dependency
 
         super().__init__(f"{dependency} is not a context manager")
+
+
+class RegistryValidationError(Exception):
+    def __init__(self, *types: type[Any]) -> None:
+        self.types = types
+
+        type_names = ", ".join(type_.__name__ for type_ in self.types)
+        super().__init__(f"{type_names} are required, but missing in registry")

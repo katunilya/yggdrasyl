@@ -77,11 +77,13 @@ deps.register(list, from_factory(list))
 `TypeNotRegisteredError` when the type is missing and wraps resolver failures in
 `TypeResolutionError`.
 
-Use `Dependencies.requires(*types)` to verify registrations before application
-startup. It raises one `TypeNotRegisteredError` containing every missing type:
+Use `Dependencies.requires(type_)` to declare registrations that must exist,
+then call `Dependencies.verify()` before application startup. It raises one
+`RegistryValidationError` containing every missing type:
 
 ```python
-deps.requires(Config, Client)
+deps.requires(Config).requires(Client)
+deps.verify()
 ```
 
 ## Managed dependencies

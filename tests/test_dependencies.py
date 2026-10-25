@@ -6,6 +6,7 @@ from yggdrasyl import (
     Dependencies,
     Injected,
     NotContextManagerError,
+    RegistryValidationError,
     TypeAlreadyRegisteredError,
     TypeNotRegisteredError,
     TypeResolutionError,
@@ -99,17 +100,46 @@ def test_requires_registered_types(deps: Dependencies) -> None:
     deps.register(int, from_instance(1))
     deps.register(str, from_instance("foo"))
 
-    assert deps.requires(int, str) is deps
+    assert deps.requires(int).requires(str) is deps
+    assert deps.verify() is None
 
 
 def test_requires_reports_all_missing_types(deps: Dependencies) -> None:
     deps.register(int, from_instance(1))
+    deps.requires(str).requires(int).requires(float)
 
-    with pytest.raises(TypeNotRegisteredError) as exc_info:
-        deps.requires(str, int, float)
+    with pytest.raises(RegistryValidationError) as exc_info:
+        deps.verify()
 
-    assert exc_info.value.types == (str, float)
-    assert str(exc_info.value) == "str, float not registered"
+    assert exc_info.value.types == (float, str)
+    assert str(exc_info.value) == "float, str are required, but missing in registry"
+
+
+def test_factory_resolves_annotated_arguments(deps: Dependencies) -> None:
+    def build_service(value: int) -> ExampleService:
+        assert value == 1
+        return ExampleService()
+
+    deps.register(int, from_instance(1))
+    deps.register(ExampleService, from_factory(build_service))
+
+    assert isinstance(deps.resolve(ExampleService), ExampleService)
+    assert deps.verify() is None
+
+
+def test_factory_records_missing_annotated_argument(deps: Dependencies) -> None:
+    def build_service(value: int) -> ExampleService:
+        return ExampleService()
+
+    deps.register(ExampleService, from_factory(build_service))
+
+    with pytest.raises(TypeResolutionError):
+        deps.resolve(ExampleService)
+
+    with pytest.raises(RegistryValidationError) as exc_info:
+        deps.verify()
+
+    assert exc_info.value.types == (int,)
 
 
 def test_raises_type_resolution_error(deps: Dependencies) -> None:
